@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useState } from "react";
 import * as faceapi from "face-api.js";
 import "./FacialExpression.css";
+import axios from "axios";
 
 export default function ExpressionDetector() {
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
   const [expression, setExpression] = useState("Detecting...");
+  const [songs, setSongs] = useState([]);
 
   // Start Webcam
   const startVideo = () => {
@@ -23,9 +24,9 @@ export default function ExpressionDetector() {
 
   useEffect(() => {
     loadModels().then(startVideo);
-  },[]);
+  }, []);
 
-    const detectExpressionOnce = async () => {
+  const detectExpressionOnce = async () => {
     const detections = await faceapi
       .detectAllFaces(
         videoRef.current,
@@ -39,39 +40,47 @@ export default function ExpressionDetector() {
     }
 
     const expr = detections[0].expressions;
+
     const mostProbable = Object.keys(expr).reduce((a, b) =>
       expr[a] > expr[b] ? a : b
     );
 
     setExpression(mostProbable);
+
     console.log("Expression:", mostProbable, expr[mostProbable]);
+
+    try {
+      const response = await axios.get(
+        `http://localhost:8080/songs?mood=${mostProbable}`
+      );
+      console.log("Song response:", response.data);
+      setSongs(response.data.song); // <-- Correct key from backend
+    } catch (error) {
+      console.error("Error fetching songs:", error);
+    }
   };
-
-
 
   return (
     <div className="mood-container">
       <h1 className="page-title">Live Mood Detection</h1>
 
       <div className="detection-section">
-        
         {/* LEFT: Video Feed */}
         <div className="video-card">
-          <div ref={canvasRef} className="video-wrapper">
-            <video
-              ref={videoRef}
-              width="350"
-              height="260"
-              autoPlay
-              muted
-              className="video-feed"
-            />
-          </div>
+          <video
+            ref={videoRef}
+            width="350"
+            height="260"
+            autoPlay
+            muted
+            className="video-feed"
+          />
         </div>
 
         {/* RIGHT: Mood Info */}
         <div className="mood-info">
           <h2 className="mood-title">Live Mood Detection</h2>
+
           <p className="mood-description">
             Your current mood is being analyzed in real-time. Enjoy music tailored to your feelings.
           </p>
@@ -91,24 +100,15 @@ export default function ExpressionDetector() {
         <h2 className="music-title">Recommended Tracks</h2>
 
         <div className="tracks-list">
-          {[
-            "Sunrise Serenade",
-            "Midnight Groove",
-            "Electric Pulse",
-            "Tranquil Echoes",
-            "Rhythmic Heartbeat",
-            "Dreamy Horizons",
-            "Urban Flow",
-            "Soulful Journey",
-            "Cosmic Dance",
-            "Velvet Nights",
-          ].map((track, i) => (
+          {songs.length === 0 && <p>No songs found for this mood.</p>}
+
+          {songs.map((track, i) => (
             <div className="track-item" key={i}>
               <div>
-                <h4>{track}</h4>
-                <p className="artist-name">Artist Name</p>
+                <h4>{track.title}</h4>
+                <p className="artist-name">{track.artist}</p>
               </div>
-              <button className="play-btn">▶</button>
+              <audio controls src={track.audio} />
             </div>
           ))}
         </div>
