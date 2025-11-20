@@ -4,6 +4,7 @@ const songSchema = new mongoose.Schema({
     title: String,
     artist: String,
     audio: String,
+    mood: String,
 })
 
-export const song = mongoose.model('Song',songSchema);
+export const SongModel = mongoose.model('Song',songSchema);
